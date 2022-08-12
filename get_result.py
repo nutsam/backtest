@@ -5,16 +5,17 @@ import os
 
 commission_val = 0.04  # 0.04% taker fees binance usdt futures
 portofolio = 10000.0  # amount of money we start with
-stake_val = 1
+persontage = 5 # 5% to total protofolio per transaction
 quantity = 0.10  # percentage to buy based on the current portofolio amount
 # here it would be a unit equivalent to 1000$ if the value of our portofolio didn't change
 
 start = '2022-01-01'
-end = '2022-06-11'
+end = '2022-08-11'
 strategies = ['SMA']
 periodRange = [15]
 plot = True
 
+os.makedirs('result', exist_ok=True)
 
 for strategy in strategies:
     for data in os.listdir("./data"):
@@ -37,7 +38,7 @@ for strategy in strategies:
         for period in periodRange:
 
             end_val, totalwin, totalloss, pnl_net, sqn = backtest.runbacktest(
-                datapath, start, end, period, strategy, commission_val, portofolio, stake_val, quantity, plot)
+                datapath, start, end, period, strategy, commission_val, portofolio, persontage, quantity, plot)
             profit = (pnl_net / portofolio) * 100
 
             # view the data in the console while processing

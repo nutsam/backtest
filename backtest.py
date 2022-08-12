@@ -1,135 +1,10 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import datetime  # For datetime objects
-import backtrader as bt # Import the backtrader platfor
+import datetime
+import backtrader as bt
 
-
-# Create a Stratey
-class SMAStrategy(bt.Strategy):
-
-    params = (
-        ('maperiod', None),
-        ('quantity', None)
-    )
-
-
-    def __init__(self):
-        # Keep a reference to the "close" line in the data[0] dataseries
-        self.dataclose = self.datas[0].close
-
-        # To keep track of pending orders and buy price/commission
-        self.order = None
-        self.buyprice = None
-        self.buycomm = None
-        self.amount = None
-
-        # Add a MovingAverageSimple indicator
-        self.sma = bt.indicators.SimpleMovingAverage(self.datas[0], period=self.params.maperiod)
-
-
-    def notify_order(self, order):
-        if order.status in [order.Submitted, order.Accepted]:
-            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
-            return
-
-        # Check if an order has been completed
-        # Attention: broker could reject order if not enough cash
-        if order.status in [order.Completed]:
-            if order.isbuy():
-                self.buyprice = order.executed.price
-                self.buycomm = order.executed.comm
-
-        self.order = None
-
-
-    def next(self):
-
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
-        if self.order:
-            return
-
-        # Check if we are in the market
-        if not self.position:
-
-            # Not yet ... we MIGHT BUY if ...
-            if self.dataclose[0] > self.sma[0]:
-
-                # Keep track of the created order to avoid a 2nd order
-                self.amount = (self.broker.getvalue() * self.params.quantity) / self.dataclose[0]
-                self.order = self.buy(size=self.amount)
-        else:
-            # Already in the market ... we might sell
-            if self.dataclose[0] < self.sma[0]:
-
-                # Keep track of the created order to avoid a 2nd order
-                self.order = self.sell(size=self.amount)
-
-
-
-class RSIStrategy(bt.Strategy):
-
-    params = (
-        ('maperiod', None),
-        ('quantity', None)
-    )
-
-
-    def __init__(self):
-        # Keep a reference to the "close" line in the data[0] dataseries
-        self.dataclose = self.datas[0].close
-
-        # To keep track of pending orders and buy price/commission
-        self.order = None
-        self.buyprice = None
-        self.buycomm = None
-        self.amount = None
-
-        # Add a MovingAverageSimple indicator
-        self.rsi = bt.talib.RSI(self.datas[0], timeperiod=self.params.maperiod)
-
-
-    def notify_order(self, order):
-        if order.status in [order.Submitted, order.Accepted]:
-            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
-            return
-
-        # Check if an order has been completed
-        # Attention: broker could reject order if not enough cash
-        if order.status in [order.Completed]:
-            if order.isbuy():
-                self.buyprice = order.executed.price
-                self.buycomm = order.executed.comm
-
-        self.order = None
-
-
-    def next(self):
-
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
-        if self.order:
-            return
-
-        # Check if we are in the market
-        if not self.position:
-
-            # Not yet ... we MIGHT BUY if ...
-            if self.rsi < 30:
-
-                # Keep track of the created order to avoid a 2nd order
-                self.amount = (self.broker.getvalue() * self.params.quantity) / self.dataclose[0]
-                self.order = self.buy(size=self.amount)
-        else:
-            # Already in the market ... we might sell
-            if self.rsi > 70:
-
-                # Keep track of the created order to avoid a 2nd order
-                self.order = self.sell(size=self.amount)
-                
-
-# ______________________ End Strategy Class
-
-
+from strategies import SMAStrategy, RSIStrategy
 
 def timeFrame(datapath):
     """
@@ -196,15 +71,31 @@ def getSQN(analyzer):
 
 
 
-def runbacktest(datapath, start, end, period, strategy, commission_val=None, portofolio=10000.0, stake_val=1, quantity=0.01, plt=False):
+def runbacktest(datapath, start, end, period, strategy, commission_val=None, portofolio=10000.0, percents=5, quantity=0.01, plt=False):
+    """_summary_
 
+    Args:
+        datapath (str): input .csv path
+        start (str): start datetime, ex: '2022-01-01'
+        end (str): end datatime, ex: '2022-08-01'
+        period (list): list of indicator period to test
+        strategy (str): strtegy name
+        commission_val (float, optional): persontage of commission. Defaults to None.
+        portofolio (float, optional): start cash. Defaults to 10000.0.
+        percents (float, optional): persontage to account balance per transaction. Defaults to 5.
+        quantity (float, optional): Defaults to 0.01.
+        plt (bool, optional): Defaults to False.
+
+    Returns:
+        _type_: _description_
+    """
     # Create a cerebro entity
     cerebro = bt.Cerebro()
 
     # Add a FixedSize sizer according to the stake
-    cerebro.addsizer(bt.sizers.FixedSize, stake=stake_val) # Multiply the stake by X
+    cerebro.addsizer(bt.sizers.PercentSizer, percents=percents)
 
-    cerebro.broker.setcash(portofolio) # default : 10000.0
+    cerebro.broker.setcash(portofolio)
 
     if commission_val:
         cerebro.broker.setcommission(commission=commission_val/100) # divide by 100 to remove the %
@@ -234,7 +125,6 @@ def runbacktest(datapath, start, end, period, strategy, commission_val=None, por
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
 
-
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
@@ -247,7 +137,6 @@ def runbacktest(datapath, start, end, period, strategy, commission_val=None, por
         totalwin, totalloss, pnl_net = 0, 0, 0
 
     sqn = getSQN(stratexe.analyzers.sqn.get_analysis())
-
 
     if plt:
         cerebro.plot(plot_return=True)
