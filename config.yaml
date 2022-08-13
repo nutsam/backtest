@@ -1,0 +1,16 @@
+data:
+  pair: "BTCUSDT"
+  freq: "1h"
+  start: "2022-03-01"
+  end: "2022-03-16"
+
+strategy:
+  name: ["EmptyStrategy"]
+  maperiod: [15]
+
+plot: true
+
+setting:
+  portofolio: 10000
+  quantity: 0.01
+  commission: 0.04

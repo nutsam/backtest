@@ -1,28 +1,32 @@
-import backtest
 import csv
 import os
 
+import yaml
 
-commission_val = 0.04  # 0.04% taker fees binance usdt futures
-portofolio = 10000.0  # amount of money we start with
-persontage = 5 # 5% to total protofolio per transaction
-quantity = 0.10  # percentage to buy based on the current portofolio amount
-# here it would be a unit equivalent to 1000$ if the value of our portofolio didn't change
+import backtest
+from strategies import *
 
-start = '2022-01-01'
-end = '2022-08-11'
-strategies = ['SMA']
-periodRange = [15]
-plot = True
+with open('config.yaml') as f:
+    config = yaml.safe_load(f)
+
+commission = config['setting']['commission']  # 0.04% taker fees binance usdt futures
+portofolio = config['setting']['portofolio']  # amount of money we start with
+persontage = 20 # 5% to total protofolio per transaction
+quantity = config['setting']['quantity']  # percentage to buy based on the current portofolio amount
+
+start = config['data']['start']
+end = config['data']['end']
+strategies = config['strategy']['name']
+periodRange = config['strategy']['maperiod']
+plot = config['plot']
 
 os.makedirs('result', exist_ok=True)
 
 for strategy in strategies:
-    for data in os.listdir("./data"):
-        datapath = 'data/' + data
+    for data in os.listdir("data"):
+        datapath = os.path.join('data', data)
         # ignore name file 'data/' and '.csv'
         sep = datapath[5:-4].split(sep='-')
-        # sep[0] = pair; sep[1] = year start; sep[2] = year end; sep[3] = timeframe
 
         print('\n ------------ ', datapath)
         print()
@@ -38,7 +42,7 @@ for strategy in strategies:
         for period in periodRange:
 
             end_val, totalwin, totalloss, pnl_net, sqn = backtest.runbacktest(
-                datapath, start, end, period, strategy, commission_val, portofolio, persontage, quantity, plot)
+                datapath, start, end, period, eval(strategy), commission, portofolio, persontage, quantity, plot)
             profit = (pnl_net / portofolio) * 100
 
             # view the data in the console while processing

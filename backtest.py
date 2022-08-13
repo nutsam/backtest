@@ -4,14 +4,14 @@ from __future__ import (absolute_import, division, print_function,
 import datetime
 import backtrader as bt
 
-from strategies import SMAStrategy, RSIStrategy
+from strategies import EmptyStrategy, SMAStrategy, RSIStrategy
 
 def timeFrame(datapath):
     """
     Select the write compression and timeframe.
     """
-    sepdatapath = datapath[5:-4].split(sep='-') # ignore name file 'data/' and '.csv'
-    tf = sepdatapath[3]
+    sepdatapath = datapath.split(sep='_') # ignore name file 'data/' and '.csv'
+    tf = sepdatapath[-1].split(sep='.')[0]
 
     if tf == '1mth':
         compression = 1
@@ -70,7 +70,6 @@ def getSQN(analyzer):
     return round(analyzer.sqn,2)
 
 
-
 def runbacktest(datapath, start, end, period, strategy, commission_val=None, portofolio=10000.0, percents=5, quantity=0.01, plt=False):
     """_summary_
 
@@ -93,22 +92,15 @@ def runbacktest(datapath, start, end, period, strategy, commission_val=None, por
     cerebro = bt.Cerebro()
 
     # Add a FixedSize sizer according to the stake
-    cerebro.addsizer(bt.sizers.PercentSizer, percents=percents)
+    # cerebro.addsizer(bt.sizers.PercentSizer, percents=percents)
 
     cerebro.broker.setcash(portofolio)
 
     if commission_val:
         cerebro.broker.setcommission(commission=commission_val/100) # divide by 100 to remove the %
 
-    # Add a strategy
-    if strategy == 'SMA':
-        cerebro.addstrategy(SMAStrategy, maperiod=period, quantity=quantity)
-    elif strategy == 'RSI':
-        cerebro.addstrategy(RSIStrategy, maperiod=period, quantity=quantity)
-    else :
-        print('no strategy')
-        exit()
-
+    cerebro.addstrategy(strategy, maperiod=period, quantity=quantity)
+    
     compression, timeframe = timeFrame(datapath)
 
     # Create a Data Feed
@@ -139,6 +131,7 @@ def runbacktest(datapath, start, end, period, strategy, commission_val=None, por
     sqn = getSQN(stratexe.analyzers.sqn.get_analysis())
 
     if plt:
-        cerebro.plot(plot_return=True)
+        cerebro.plot(style='candle', barup='green', bardown='red')
+
 
     return cerebro.broker.getvalue(), totalwin, totalloss, pnl_net, sqn
